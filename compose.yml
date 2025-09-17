@@ -19,7 +19,17 @@ services:
     networks:
       - kafka-network
       - public-network
+    volumes:
+      - ./data:/var/lib/kafka/data
     restart: unless-stopped
+
+  register-kafka:
+    build: .
+    networks:
+      - kafka-network
+      - public-network
+    depends_on:
+      - kafka
 
 networks:
   kafka-network:

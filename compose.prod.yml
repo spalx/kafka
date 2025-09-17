@@ -1,4 +1,0 @@
-services:
-  kafka:
-    volumes:
-      - ./data:/var/lib/kafka/data
