@@ -18,21 +18,20 @@ services:
       - KAFKA_LOG_DIRS=/var/lib/kafka/data
     networks:
       - kafka-network
-      - public-network
     volumes:
-      - ./data:/var/lib/kafka/data
+      - kafka-data:/var/lib/kafka/data
     restart: unless-stopped
 
   register-kafka:
     build: .
     networks:
       - kafka-network
-      - public-network
     depends_on:
       - kafka
 
 networks:
   kafka-network:
     driver: bridge
-  public-network:
-    external: true
+
+volumes:
+  kafka-data:
