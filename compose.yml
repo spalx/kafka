@@ -17,6 +17,7 @@ services:
       - kafka-network
     depends_on:
       - kafka
+    restart: unless-stopped
 
 networks:
   kafka-network:

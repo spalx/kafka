@@ -1,7 +1,8 @@
 #!/bin/sh
 
-MAX_RETRIES=6
-SLEEP_BETWEEN=2
+# Never exits: every service that resolves Kafka at startup fails until this registration exists.
+
+RETRY_INTERVAL=2
 HEARTBEAT_INTERVAL=10
 
 SERVICE_NAME="kafka"
@@ -25,36 +26,27 @@ send_request() {
 EOF
 )
 
-  for attempt in $(seq 1 $MAX_RETRIES); do
-    #echo "Attempt $attempt: Sending $action..."
-    response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://service-discovery:3099/http-transport" \
-      -H "Content-Type: application/json" \
-      -d "$payload" \
-      --max-time 5)
+  response=$(curl -s -o /dev/null -w "%{http_code}" -X POST "http://service-discovery:3099/http-transport" \
+    -H "Content-Type: application/json" \
+    -d "$payload" \
+    --max-time 5)
 
-    if [ "$response" = "200" ] || [ "$response" = "201" ]; then
-      #echo "$action successful."
-      return 0
-    else
-      echo "$action failed with HTTP $response"
-      if [ "$attempt" -lt "$MAX_RETRIES" ]; then
-        echo "Retrying in $SLEEP_BETWEEN seconds..."
-        sleep "$SLEEP_BETWEEN"
-      fi
-    fi
-  done
+  if [ "$response" = "200" ] || [ "$response" = "201" ]; then
+    return 0
+  fi
 
-  echo "$action failed after $MAX_RETRIES attempts."
+  echo "$action failed with HTTP $response"
   return 1
 }
 
 # Wait a few seconds for Kafka to start
 sleep 5
 
-# Register Kafka initially
-send_request "servicediscovery.registerService" || exit 1
+until send_request "servicediscovery.registerService"; do
+  sleep "$RETRY_INTERVAL"
+done
 
-# Start heartbeat loop
+# A heartbeat rewrites the whole entry, so it also restores an expired registration.
 while true; do
   sleep "$HEARTBEAT_INTERVAL"
   send_request "servicediscovery.serviceHeartbeat"
